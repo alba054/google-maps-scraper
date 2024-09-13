@@ -21,7 +21,7 @@ type GmapJob struct {
 	ExtractEmail bool
 }
 
-func NewGmapJob(id, langCode, query string, maxDepth int, extractEmail bool) *GmapJob {
+func NewGmapJob(id, langCode, query string, maxDepth int, extractEmail bool, nearby string, lat, long float64, link string, zoomLevel string) *GmapJob {
 	query = url.QueryEscape(query)
 
 	const (
@@ -33,11 +33,20 @@ func NewGmapJob(id, langCode, query string, maxDepth int, extractEmail bool) *Gm
 		id = uuid.New().String()
 	}
 
+	var queryPattern string
+
+	queryPattern = "https://www.google.com/maps/search/" + query
+	if nearby != "" {
+		queryPattern = fmt.Sprintf("https://www.google.com/maps/search/%s/@%f,%f,%s", nearby, lat, long, zoomLevel)
+	} else if link != "" {
+		queryPattern = link
+	}
+
 	job := GmapJob{
 		Job: scrapemate.Job{
 			ID:         id,
 			Method:     http.MethodGet,
-			URL:        "https://www.google.com/maps/search/" + query,
+			URL:        queryPattern,
 			URLParams:  map[string]string{"hl": langCode},
 			MaxRetries: maxRetries,
 			Priority:   prio,
@@ -118,6 +127,12 @@ func (j *GmapJob) BrowserActions(ctx context.Context, page playwright.Page) scra
 		return resp
 	}
 
+	// Wait for a unique element that indicates the place page is loaded
+	_, errSelector := page.WaitForSelector(`div[role="feed"]`, playwright.PageWaitForSelectorOptions{
+		State:   playwright.WaitForSelectorStateVisible,
+		Timeout: playwright.Float(defaultTimeout),
+	})
+
 	resp.URL = pageResponse.URL()
 	resp.StatusCode = pageResponse.Status()
 	resp.Headers = make(http.Header, len(pageResponse.Headers()))
@@ -126,8 +141,8 @@ func (j *GmapJob) BrowserActions(ctx context.Context, page playwright.Page) scra
 		resp.Headers.Add(k, v)
 	}
 
-	if strings.Contains(page.URL(), "/maps/place/") {
-		resp.URL = page.URL()
+	if strings.Contains(page.URL(), "/maps/place/") || errSelector != nil {
+ 		resp.URL = page.URL()
 
 		var body string
 

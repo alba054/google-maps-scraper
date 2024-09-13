@@ -129,7 +129,7 @@ func runFromLocalFile(ctx context.Context, args *arguments) error {
 		return err
 	}
 
-	seedJobs, err := createSeedJobs(args.langCode, input, args.maxDepth, args.email)
+	seedJobs, err := createSeedJobs(args.langCode, input, args.maxDepth, args.email, args.nearby, args.lat, args.long, args.link, args.zoomLevel)
 	if err != nil {
 		return err
 	}
@@ -201,7 +201,7 @@ func produceSeedJobs(ctx context.Context, args *arguments, provider scrapemate.J
 		input = f
 	}
 
-	jobs, err := createSeedJobs(args.langCode, input, args.maxDepth, args.email)
+	jobs, err := createSeedJobs(args.langCode, input, args.maxDepth, args.email, args.nearby, args.lat, args.long, args.link, args.zoomLevel)
 	if err != nil {
 		return err
 	}
@@ -215,7 +215,7 @@ func produceSeedJobs(ctx context.Context, args *arguments, provider scrapemate.J
 	return nil
 }
 
-func createSeedJobs(langCode string, r io.Reader, maxDepth int, email bool) (jobs []scrapemate.IJob, err error) {
+func createSeedJobs(langCode string, r io.Reader, maxDepth int, email bool, nearby string, lat, long float64, link string, zoomLevel string) (jobs []scrapemate.IJob, err error) {
 	scanner := bufio.NewScanner(r)
 
 	for scanner.Scan() {
@@ -231,7 +231,7 @@ func createSeedJobs(langCode string, r io.Reader, maxDepth int, email bool) (job
 			id = strings.TrimSpace(after)
 		}
 
-		jobs = append(jobs, gmaps.NewGmapJob(id, langCode, query, maxDepth, email))
+		jobs = append(jobs, gmaps.NewGmapJob(id, langCode, query, maxDepth, email, nearby, lat, long, link, zoomLevel))
 	}
 
 	return jobs, scanner.Err()
@@ -254,6 +254,12 @@ type arguments struct {
 	produceOnly              bool
 	exitOnInactivityDuration time.Duration
 	email                    bool
+	nearby                   string
+	link                   string
+	zoomLevel                   string
+	nearbyState                   bool
+	lat                      float64
+	long                     float64
 }
 
 func parseArgs() (args arguments) {
@@ -279,6 +285,12 @@ func parseArgs() (args arguments) {
 	flag.DurationVar(&args.exitOnInactivityDuration, "exit-on-inactivity", 0, "program exits after this duration of inactivity(example value '5m')")
 	flag.BoolVar(&args.json, "json", false, "Use this to produce a json file instead of csv (not available when using db)")
 	flag.BoolVar(&args.email, "email", false, "Use this to extract emails from the websites")
+	flag.BoolVar(&args.nearbyState, "nearbyState", false, "Use this to get only lat and long")
+	flag.Float64Var(&args.lat, "lat", 0, "set the latitude to search for nearby places")
+	flag.Float64Var(&args.long, "long", 0, "set the longitude to search for nearby places")
+	flag.StringVar(&args.nearby, "nearby", "", "set the nearby place")
+	flag.StringVar(&args.link, "link", "", "set link of a place")
+	flag.StringVar(&args.zoomLevel, "zoomLevel", "14z", "set link of a place")
 
 	flag.Parse()
 

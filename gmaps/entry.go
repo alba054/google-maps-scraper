@@ -3,6 +3,7 @@ package gmaps
 import (
 	"encoding/json"
 	"fmt"
+	"regexp"
 	"runtime/debug"
 	"strings"
 )
@@ -72,6 +73,7 @@ type Entry struct {
 	ReviewsPerRating map[int]int            `json:"reviews_per_rating"`
 	Latitude         float64                `json:"latitude"`
 	Longtitude       float64                `json:"longtitude"`
+	ZoomLevel        string                 `json:"zoom_level"`
 	Status           string                 `json:"status"`
 	Description      string                 `json:"description"`
 	ReviewsLink      string                 `json:"reviews_link"`
@@ -139,6 +141,7 @@ func (e *Entry) CsvHeaders() []string {
 		"reviews_per_rating",
 		"latitude",
 		"longitude",
+		"zoom_level",
 		"cid",
 		"status",
 		"descriptions",
@@ -160,6 +163,8 @@ func (e *Entry) CsvHeaders() []string {
 }
 
 func (e *Entry) CsvRow() []string {
+	fmt.Println(e.Link)
+	_,_,zoomLevel, _ := extractLatLongZoom(e.Link)
 	return []string{
 		e.ID,
 		e.Link,
@@ -176,6 +181,7 @@ func (e *Entry) CsvRow() []string {
 		stringify(e.ReviewsPerRating),
 		stringify(e.Latitude),
 		stringify(e.Longtitude),
+		zoomLevel,
 		e.Cid,
 		e.Status,
 		e.Description,
@@ -220,6 +226,7 @@ func EntryFromJSON(raw []byte) (entry Entry, err error) {
 		return entry, fmt.Errorf("invalid json")
 	}
 
+	fmt.Println(jd[4].([]any)[3])
 	entry.Link = getNthElementAndCast[string](darray, 27)
 	entry.Title = getNthElementAndCast[string](darray, 11)
 
@@ -237,6 +244,8 @@ func EntryFromJSON(raw []byte) (entry Entry, err error) {
 	entry.Address = strings.TrimSpace(
 		strings.TrimPrefix(getNthElementAndCast[string](darray, 18), entry.Title+","),
 	)
+
+	_,_,zoomLevel, err := extractLatLongZoom(entry.Link)
 	entry.OpenHours = getHours(darray)
 	entry.PopularTimes = getPopularTimes(darray)
 	entry.WebSite = getNthElementAndCast[string](darray, 7, 0)
@@ -246,6 +255,7 @@ func EntryFromJSON(raw []byte) (entry Entry, err error) {
 	entry.ReviewRating = getNthElementAndCast[float64](darray, 4, 7)
 	entry.Latitude = getNthElementAndCast[float64](darray, 9, 2)
 	entry.Longtitude = getNthElementAndCast[float64](darray, 9, 3)
+	entry.ZoomLevel = zoomLevel
 	entry.Cid = getNthElementAndCast[string](jd, 25, 3, 0, 13, 0, 0, 1)
 	entry.Status = getNthElementAndCast[string](darray, 34, 4, 4)
 	entry.Description = getNthElementAndCast[string](darray, 32, 1, 1)
@@ -379,6 +389,8 @@ func EntryFromJSON(raw []byte) (entry Entry, err error) {
 
 		entry.UserReviews = append(entry.UserReviews, review)
 	}
+
+	
 
 	return entry, nil
 }
@@ -537,4 +549,29 @@ func stringify(v any) string {
 		d, _ := json.Marshal(v)
 		return string(d)
 	}
+}
+
+// ExtractLatLongZoom extracts latitude, longitude, and zoom level from a string.
+func extractLatLongZoom(s string) (latitude, longitude, zoomLevel string, err error) {
+	// Define the regex pattern for latitude, longitude, and zoom level
+	pattern := `(-?\d+\.\d+),(-?\d+\.\d+),(\d{1,2}z)`
+
+	// Compile the regex pattern
+	re, err := regexp.Compile(pattern)
+	if err != nil {
+		return "", "", "", err
+	}
+
+	// Find the first match
+	match := re.FindStringSubmatch(s)
+	if len(match) < 4 {
+		return "", "", "", fmt.Errorf("no match found")
+	}
+
+	// Extract latitude, longitude, and zoom level
+	latitude = match[1]
+	longitude = match[2]
+	zoomLevel = match[3]
+
+	return latitude, longitude, zoomLevel, nil
 }
