@@ -164,7 +164,7 @@ func (e *Entry) CsvHeaders() []string {
 
 func (e *Entry) CsvRow() []string {
 	fmt.Println(e.Link)
-	_,_,zoomLevel, _ := extractLatLongZoom(e.Link)
+	_, _, zoomLevel, _ := extractLatLongZoom(e.Link)
 	return []string{
 		e.ID,
 		e.Link,
@@ -245,7 +245,7 @@ func EntryFromJSON(raw []byte) (entry Entry, err error) {
 		strings.TrimPrefix(getNthElementAndCast[string](darray, 18), entry.Title+","),
 	)
 
-	_,_,zoomLevel, err := extractLatLongZoom(entry.Link)
+	_, _, zoomLevel, err := extractLatLongZoom(entry.Link)
 	entry.OpenHours = getHours(darray)
 	entry.PopularTimes = getPopularTimes(darray)
 	entry.WebSite = getNthElementAndCast[string](darray, 7, 0)
@@ -389,8 +389,6 @@ func EntryFromJSON(raw []byte) (entry Entry, err error) {
 
 		entry.UserReviews = append(entry.UserReviews, review)
 	}
-
-	
 
 	return entry, nil
 }

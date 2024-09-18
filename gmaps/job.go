@@ -36,11 +36,13 @@ func NewGmapJob(id, langCode, query string, maxDepth int, extractEmail bool, nea
 	var queryPattern string
 
 	queryPattern = "https://www.google.com/maps/search/" + query
+	fmt.Println(nearby)
 	if nearby != "" {
 		queryPattern = fmt.Sprintf("https://www.google.com/maps/search/%s/@%f,%f,%s", nearby, lat, long, zoomLevel)
 	} else if link != "" {
 		queryPattern = link
 	}
+
 
 	job := GmapJob{
 		Job: scrapemate.Job{
@@ -142,7 +144,7 @@ func (j *GmapJob) BrowserActions(ctx context.Context, page playwright.Page) scra
 	}
 
 	if strings.Contains(page.URL(), "/maps/place/") || errSelector != nil {
- 		resp.URL = page.URL()
+		resp.URL = page.URL()
 
 		var body string
 
